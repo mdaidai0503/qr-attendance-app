@@ -1,36 +1,51 @@
-QR出退勤アプリ v1.1（fixed2 / paid-leave-app共存版）
+QR出退勤アプリ v2（固定QR版）
+=============================
 
-【このZIPに入っているファイル】
-・index.html
-・manifest.webmanifest
-・sw.js
-・supabase-v1.sql
-・supabase-v1.txt
-・README.txt
+【今回の修正】
+- 動的QR方式をやめ、v1と同じ固定QR読取方式に変更しました。
+- 管理画面の「QR表示」で同じQRコードを常時表示します。
+- 会社入口などに印刷・掲示して使用できます。
+- QRコードの自動更新・有効期限はありません。
 
-【今回の修正内容】
-・有給休暇アプリ側とテーブル名が衝突しないよう、出退勤側を qr_attendance_ 接頭辞へ統一
-・Supabaseのpgcrypto関数を extensions.crypt / extensions.gen_salt で使用
-・index.htmlのRPC呼び出しを、修正版SQLの関数名へすべて変更
-・Service Workerのキャッシュ名を更新し、旧版が残りにくいよう変更
+【v2で追加される機能】
+1. 管理者による打刻修正・取消
+   - 「今日の状況」→「修正」
+   - 出勤・退勤時刻の修正、当日打刻の取消
+   - 修正内容は「修正履歴」に保存
 
-【すでにSupabase SQLで Success. No rows returned が出ている場合】
-今回の supabase-v1.sql / supabase-v1.txt を再実行する必要はありません。
-GitHubへ次の3ファイルを上書きしてください。
-1. index.html
-2. manifest.webmanifest
-3. sw.js
+2. 従業員管理強化
+   - 従業員の停止・再開
+   - 従業員PINの再設定
 
-【初回利用時】
-1. GitHub Pagesでアプリを開く
-2. 下部「設定」から、同じ paid-leave-app Supabase Project URL と anon public key を入力して保存
-3. 下部「管理」から管理者ログイン
-4. 初期管理者PIN：0000
-5. 「従業員管理」から社員コード・氏名・従業員PINを登録
-6. 「QR表示」で会社掲示用QRを表示
-7. 従業員はQRを読み取り、社員コード＋PINで出勤/退勤を打刻
+3. 管理者PIN変更
+   - 「管理者設定」から変更
 
-【重要】
-・初期管理者PIN 0000 は実運用前に必ず変更してください。
-・このv1.1のQRは共通固定QRです。QR画像を撮影して社外から使う対策はまだ入っていません。
-・次版では、一定時間ごとに変わる動的QRや会社周辺のみ打刻できる仕組みを追加できます。
+4. 月間一覧強化
+   - 従業員別勤務時間合計
+   - 打刻明細
+   - CSV出力
+
+【更新手順】
+A. Supabase
+  1) Supabase → SQL Editor → 新しいQuery
+  2) supabase-v2-migration.txt の全文を貼り付ける
+  3) Run
+  4) Success. No rows returned が出れば完了
+
+B. GitHub
+  既存 qr-attendance-app リポジトリの以下3ファイルを上書き
+  - index.html
+  - manifest.webmanifest
+  - sw.js
+
+C. iPhone
+  GitHub Pagesを開き直してください。
+  古い画面が残る場合はSafariで再読み込みしてください。
+
+【データについて】
+- v1の従業員データ・打刻データは削除しません。
+- 旧v2動的QR版を一度適用済みでも、このSQLで動的QR用の機能だけ安全に削除します。
+
+【固定QRについて】
+- 固定QRは同じQRを継続して使えます。
+- 写真やスクリーンショットでも同じリンクを開けるため、動的QRより代理打刻対策は弱くなります。
