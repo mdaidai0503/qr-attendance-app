@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+<meta name="theme-color" content="#0f2747" />
+<link rel="manifest" href="manifest.webmanifest" />
+<title>QR出退勤 v1.1</title>
+<style>
+:root{--navy:#0f2747;--bg:#f4f6f8;--card:#fff;--muted:#687385;--line:#dce2e8;--green:#128a4b;--blue:#1f5ca8;--red:#b42318}
+*{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic",sans-serif;background:var(--bg);color:#182230}
+header{position:sticky;top:0;z-index:5;background:var(--navy);color:#fff;padding:14px 16px;font-weight:700;text-align:center}.wrap{max-width:760px;margin:auto;padding:16px 14px 90px}.card{background:var(--card);border-radius:16px;padding:16px;margin:12px 0;box-shadow:0 2px 10px #00000012}.title{font-size:20px;font-weight:800;margin:0 0 8px}.muted{color:var(--muted);font-size:13px}.clock{font-size:42px;font-weight:800;text-align:center;letter-spacing:1px;margin:12px 0}.date{text-align:center;color:var(--muted)}
+input,select,button{font:inherit}input,select{width:100%;padding:13px;border:1px solid var(--line);border-radius:11px;background:#fff;margin:6px 0 10px}button{border:0;border-radius:12px;padding:14px 16px;font-weight:800;cursor:pointer}.btn{width:100%;margin:7px 0}.primary{background:var(--navy);color:white}.in{background:var(--green);color:white;font-size:20px}.out{background:var(--blue);color:white;font-size:20px}.danger{background:#fee4e2;color:var(--red)}.secondary{background:#e9eef4;color:#183153}.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}.hidden{display:none!important}.msg{padding:12px;border-radius:10px;margin:10px 0;background:#eef4ff}.ok{background:#ecfdf3;color:#067647}.err{background:#fef3f2;color:#b42318}.status{font-size:18px;font-weight:800;text-align:center;padding:10px}.row{display:flex;justify-content:space-between;gap:10px;padding:10px 0;border-bottom:1px solid var(--line)}.row:last-child{border-bottom:0}.pill{font-size:12px;padding:4px 8px;border-radius:999px;background:#eef2f6;white-space:nowrap}.pill.on{background:#dcfae6;color:#067647}.pill.off{background:#eaf0f8;color:#344054}.nav{position:fixed;left:0;right:0;bottom:0;background:var(--navy);display:flex;z-index:10;padding-bottom:env(safe-area-inset-bottom)}.nav button{flex:1;background:transparent;color:white;border-radius:0;padding:12px 6px;font-size:12px}.nav b{display:block;font-size:20px;margin-bottom:2px}.adminbar{display:flex;gap:8px;flex-wrap:wrap}.adminbar button{flex:1;min-width:130px}.small{font-size:12px}.right{text-align:right}
+</style>
+</head>
+<body>
+<header>QR出退勤</header>
+<div class="wrap">
+<section id="employeeView">
+  <div class="card">
+    <div class="date" id="today"></div><div class="clock" id="clock">--:--</div>
+    <div id="employeeLogin">
+      <div class="title">従業員打刻</div><div class="muted">社員コードと4桁PINを入力してください。</div>
+      <input id="empCode" placeholder="社員コード 例：001" autocomplete="username" />
+      <input id="empPin" placeholder="4桁PIN" type="password" inputmode="numeric" maxlength="8" autocomplete="current-password" />
+      <button class="btn primary" onclick="employeeLoginNow()">ログイン</button>
+    </div>
+    <div id="employeePanel" class="hidden">
+      <div class="title" id="hello"></div><div class="status" id="empStatus"></div>
+      <button class="btn in" id="btnIn" onclick="clockAction('in')">🟢 出勤する</button>
+      <button class="btn out" id="btnOut" onclick="clockAction('out')">🔵 退勤する</button>
+      <button class="btn secondary" onclick="employeeLogout()">ログアウト</button>
+    </div>
+    <div id="empMsg"></div>
+  </div>
+</section>
+
+<section id="adminView" class="hidden">
+  <div class="card">
+    <div class="title">管理者</div>
+    <div id="adminLogin">
+      <input id="adminPin" placeholder="管理者PIN" type="password" inputmode="numeric" />
+      <button class="btn primary" onclick="adminLoginNow()">管理者ログイン</button>
+    </div>
+    <div id="adminPanel" class="hidden">
+      <div class="adminbar">
+        <button class="secondary" onclick="loadToday()">今日の状況</button>
+        <button class="secondary" onclick="showMonthPicker()">月間一覧</button>
+        <button class="secondary" onclick="showEmployeeManager()">従業員管理</button>
+        <button class="secondary" onclick="showQr()">QR表示</button>
+      </div>
+      <div id="adminContent"></div>
+      <button class="btn danger" onclick="adminLogout()">管理者ログアウト</button>
+    </div>
+    <div id="adminMsg"></div>
+  </div>
+</section>
+
+<section id="setupView" class="hidden">
+  <div class="card"><div class="title">Supabase接続設定</div>
+    <div class="muted">Supabaseの Project URL と anon public key を入力します。端末内に保存されます。</div>
+    <input id="sbUrl" placeholder="https://xxxx.supabase.co" />
+    <input id="sbKey" placeholder="anon public key" />
+    <button class="btn primary" onclick="saveSetup()">保存</button>
+    <button class="btn secondary" onclick="clearSetup()">接続設定を消去</button>
+    <div id="setupMsg"></div>
+  </div>
+</section>
+</div>
+<nav class="nav">
+  <button onclick="showView('employee')"><b>⏱</b>打刻</button>
+  <button onclick="showView('admin')"><b>📋</b>管理</button>
+  <button onclick="showView('setup')"><b>⚙️</b>設定</button>
+</nav>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script>
+let sb=null, employeeSession=null, adminSessionPin=null;
+const $=id=>document.getElementById(id);
+function esc(s){return String(s??'').replace(/[&<>\"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":'&#39;'}[m]))}
+function setMsg(id,text,ok=true){$(id).innerHTML=text?`<div class="msg ${ok?'ok':'err'}">${esc(text)}</div>`:''}
+function initSb(){const u=localStorage.getItem('sb_url'),k=localStorage.getItem('sb_key'); if(u&&k&&window.supabase){sb=window.supabase.createClient(u,k);return true}return false}
+function nowJp(){return new Date()}
+function tick(){const d=nowJp(); $('clock').textContent=d.toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit',second:'2-digit'});$('today').textContent=d.toLocaleDateString('ja-JP',{year:'numeric',month:'long',day:'numeric',weekday:'short'})}setInterval(tick,1000);tick();
+function showView(v){['employee','admin','setup'].forEach(x=>$(x+'View').classList.toggle('hidden',x!==v));if(v==='setup'){ $('sbUrl').value=localStorage.getItem('sb_url')||''; $('sbKey').value=localStorage.getItem('sb_key')||'';}}
+function requireSb(msgId){if(sb||initSb())return true;setMsg(msgId,'先に「設定」でSupabase接続情報を保存してください。',false);return false}
+function saveSetup(){const u=$('sbUrl').value.trim(),k=$('sbKey').value.trim();if(!u||!k)return setMsg('setupMsg','URLとkeyを入力してください。',false);localStorage.setItem('sb_url',u);localStorage.setItem('sb_key',k);initSb();setMsg('setupMsg','保存しました。')}
+function clearSetup(){localStorage.removeItem('sb_url');localStorage.removeItem('sb_key');sb=null;setMsg('setupMsg','接続設定を消去しました。')}
+async function employeeLoginNow(){if(!requireSb('empMsg'))return;const code=$('empCode').value.trim(),pin=$('empPin').value.trim();if(!code||!pin)return setMsg('empMsg','社員コードとPINを入力してください。',false);const {data,error}=await sb.rpc('qr_attendance_employee_status',{p_employee_code:code,p_pin:pin});if(error||!data?.ok)return setMsg('empMsg',data?.message||error?.message||'ログインできませんでした。',false);employeeSession={code,pin,name:data.name};$('employeeLogin').classList.add('hidden');$('employeePanel').classList.remove('hidden');$('hello').textContent=`${data.name} さん`;renderEmpStatus(data);setMsg('empMsg','')}
+function renderEmpStatus(d){let text='本日は未出勤です';if(d.check_in&&!d.check_out)text=`出勤中　${new Date(d.check_in).toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit'})}〜`;if(d.check_out)text=`退勤済　${new Date(d.check_in).toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit'})} → ${new Date(d.check_out).toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit'})}`;$('empStatus').textContent=text;$('btnIn').disabled=!!d.check_in;$('btnOut').disabled=!d.check_in||!!d.check_out;$('btnIn').style.opacity=$('btnIn').disabled?.45:1;$('btnOut').style.opacity=$('btnOut').disabled?.45:1}
+async function clockAction(action){if(!employeeSession||!requireSb('empMsg'))return;const {data,error}=await sb.rpc('qr_attendance_employee_clock',{p_employee_code:employeeSession.code,p_pin:employeeSession.pin,p_action:action});if(error||!data?.ok)return setMsg('empMsg',data?.message||error?.message||'打刻できませんでした。',false);setMsg('empMsg',data.message);const s=await sb.rpc('qr_attendance_employee_status',{p_employee_code:employeeSession.code,p_pin:employeeSession.pin});if(s.data?.ok)renderEmpStatus(s.data)}
+function employeeLogout(){employeeSession=null;$('employeeLogin').classList.remove('hidden');$('employeePanel').classList.add('hidden');$('empPin').value='';setMsg('empMsg','')}
+async function adminLoginNow(){if(!requireSb('adminMsg'))return;const pin=$('adminPin').value.trim();const {data,error}=await sb.rpc('qr_attendance_admin_auth',{p_admin_pin:pin});if(error||!data)return setMsg('adminMsg','管理者PINが違います。',false);adminSessionPin=pin;$('adminLogin').classList.add('hidden');$('adminPanel').classList.remove('hidden');setMsg('adminMsg','');loadToday()}
+function adminLogout(){adminSessionPin=null;$('adminLogin').classList.remove('hidden');$('adminPanel').classList.add('hidden');$('adminPin').value='';$('adminContent').innerHTML=''}
+async function loadToday(){if(!adminSessionPin)return;const date=new Date().toLocaleDateString('sv-SE');const {data,error}=await sb.rpc('qr_attendance_admin_day',{p_admin_pin:adminSessionPin,p_date:date});if(error)return setMsg('adminMsg',error.message,false);let h=`<h3>本日の出退勤</h3>`;(data||[]).forEach(r=>{const ci=r.check_in?new Date(r.check_in).toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit'}):'—';const co=r.check_out?new Date(r.check_out).toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit'}):'';const st=!r.check_in?'未出勤':r.check_out?'退勤済':'出勤中';h+=`<div class="row"><div><b>${esc(r.employee_name)}</b><div class="small muted">${esc(r.employee_code)}</div></div><div class="right">${ci}${co?' → '+co:''}<br><span class="pill ${st==='出勤中'?'on':'off'}">${st}</span></div></div>`});$('adminContent').innerHTML=h||'データなし'}
+function showMonthPicker(){const d=new Date();$('adminContent').innerHTML=`<h3>月間一覧</h3><div class="grid2"><select id="monthYear">${[d.getFullYear()-1,d.getFullYear(),d.getFullYear()+1].map(y=>`<option ${y===d.getFullYear()?'selected':''}>${y}</option>`).join('')}</select><select id="monthNo">${Array.from({length:12},(_,i)=>`<option value="${i+1}" ${(i+1)===(d.getMonth()+1)?'selected':''}>${i+1}月</option>`).join('')}</select></div><button class="btn primary" onclick="loadMonth()">表示</button><div id="monthRows"></div>`}
+async function loadMonth(){const y=+$('monthYear').value,m=+$('monthNo').value;const {data,error}=await sb.rpc('qr_attendance_admin_month',{p_admin_pin:adminSessionPin,p_year:y,p_month:m});if(error)return setMsg('adminMsg',error.message,false);let h='';(data||[]).forEach(r=>{const ci=r.check_in?new Date(r.check_in).toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit'}):'—';const co=r.check_out?new Date(r.check_out).toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit'}):'—';h+=`<div class="row"><div>${esc(r.work_date)}<br><b>${esc(r.employee_name)}</b></div><div>${ci} → ${co}</div></div>`});$('monthRows').innerHTML=h||'<div class="muted">データがありません。</div>'}
+async function showEmployeeManager(){const {data,error}=await sb.rpc('qr_attendance_admin_employees',{p_admin_pin:adminSessionPin});if(error)return setMsg('adminMsg',error.message,false);let h=`<h3>従業員管理</h3><input id="newCode" placeholder="社員コード"><input id="newName" placeholder="氏名"><input id="newPin" placeholder="初期PIN" type="password"><button class="btn primary" onclick="addEmployee()">従業員を追加</button><hr>`;(data||[]).forEach(r=>h+=`<div class="row"><div><b>${esc(r.name)}</b><div class="small muted">${esc(r.employee_code)}</div></div><span class="pill">${r.active?'有効':'停止'}</span></div>`);$('adminContent').innerHTML=h}
+async function addEmployee(){const c=$('newCode').value.trim(),n=$('newName').value.trim(),p=$('newPin').value.trim();const {data,error}=await sb.rpc('qr_attendance_admin_add_employee',{p_admin_pin:adminSessionPin,p_employee_code:c,p_name:n,p_pin:p});if(error||!data?.ok)return setMsg('adminMsg',data?.message||error?.message||'追加できませんでした。',false);setMsg('adminMsg','従業員を追加しました。');showEmployeeManager()}
+function showQr(){const base=location.href.split('?')[0].split('#')[0];$('adminContent').innerHTML=`<h3>従業員用QRコード</h3><div class="muted">このQRを会社入口などに掲示してください。</div><div id="qr" style="display:flex;justify-content:center;padding:20px"></div><input value="${esc(base)}" readonly><div class="small muted">※ このv1では共通QRです。代理打刻対策として、次版で「一定時間ごとに変わるQR」に変更できます。</div>`;if(window.QRCode)new QRCode($('qr'),{text:base,width:220,height:220})}
+initSb();
+if('serviceWorker'in navigator)navigator.serviceWorker.register('./sw.js').catch(()=>{});
+</script>
+</body></html>
