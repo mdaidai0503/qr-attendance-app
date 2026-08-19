@@ -5,14 +5,14 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
 <meta name="theme-color" content="#0f2747" />
 <link rel="manifest" href="manifest.webmanifest" />
-<title>QR出退勤 v2.1</title>
+<title>QR出退勤 v2.2</title>
 <style>
 :root{--navy:#0f2747;--bg:#f4f6f8;--card:#fff;--muted:#687385;--line:#dce2e8;--green:#128a4b;--blue:#1f5ca8;--red:#b42318;--amber:#b54708}
 *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic",sans-serif;background:var(--bg);color:#182230}header{position:sticky;top:0;z-index:5;background:var(--navy);color:#fff;padding:14px 16px;font-weight:700;text-align:center}.wrap{max-width:820px;margin:auto;padding:16px 14px 92px}.card{background:var(--card);border-radius:16px;padding:16px;margin:12px 0;box-shadow:0 2px 10px #00000012}.title{font-size:20px;font-weight:800;margin:0 0 8px}.muted{color:var(--muted);font-size:13px}.clock{font-size:42px;font-weight:800;text-align:center;letter-spacing:1px;margin:12px 0}.date{text-align:center;color:var(--muted)}input,select,button{font:inherit}input,select{width:100%;padding:13px;border:1px solid var(--line);border-radius:11px;background:#fff;margin:6px 0 10px}button{border:0;border-radius:12px;padding:14px 16px;font-weight:800;cursor:pointer}.btn{width:100%;margin:7px 0}.primary{background:var(--navy);color:white}.in{background:var(--green);color:white;font-size:20px}.out{background:var(--blue);color:white;font-size:20px}.danger{background:#fee4e2;color:var(--red)}.secondary{background:#e9eef4;color:#183153}.warning{background:#fff4e5;color:var(--amber)}.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.hidden{display:none!important}.msg{padding:12px;border-radius:10px;margin:10px 0;background:#eef4ff}.ok{background:#ecfdf3;color:#067647}.err{background:#fef3f2;color:#b42318}.status{font-size:18px;font-weight:800;text-align:center;padding:10px}.row{display:flex;justify-content:space-between;gap:10px;padding:10px 0;border-bottom:1px solid var(--line);align-items:center}.row:last-child{border-bottom:0}.pill{font-size:12px;padding:4px 8px;border-radius:999px;background:#eef2f6;white-space:nowrap}.pill.on{background:#dcfae6;color:#067647}.pill.off{background:#eaf0f8;color:#344054}.pill.qr{background:#ecfdf3;color:#067647}.nav{position:fixed;left:0;right:0;bottom:0;background:var(--navy);display:flex;z-index:10;padding-bottom:env(safe-area-inset-bottom)}.nav button{flex:1;background:transparent;color:white;border-radius:0;padding:12px 6px;font-size:12px}.nav b{display:block;font-size:20px;margin-bottom:2px}.adminbar{display:grid;grid-template-columns:1fr 1fr;gap:8px}.small{font-size:12px}.right{text-align:right}.qrbox{display:flex;justify-content:center;padding:18px}.qrstatus{text-align:center;font-weight:800;margin:8px 0}.tools{display:flex;gap:8px;flex-wrap:wrap}.tools button{flex:1;min-width:120px}.tableWrap{overflow:auto}.adminEdit{border:1px solid var(--line);border-radius:12px;padding:12px;margin:8px 0}.kpi{font-size:24px;font-weight:800}.mono{font-variant-numeric:tabular-nums}.notice{padding:12px;border-radius:10px;background:#fff8e7;color:#7a4b00;margin:10px 0}@media(max-width:560px){.grid3{grid-template-columns:1fr}.clock{font-size:38px}}
 </style>
 </head>
 <body>
-<header>QR出退勤 v2.1</header>
+<header>QR出退勤 v2.2</header>
 <div class="wrap">
 <section id="employeeView">
   <div class="card">
@@ -59,7 +59,7 @@
 
 <section id="setupView" class="hidden">
   <div class="card"><div class="title">Supabase接続設定</div>
-    <div class="muted">v1と同じ Project URL / anon public key を使用します。保存済みならそのまま引き継ぎます。</div>
+    <div class="muted">通常は入力不要です。会社の固定QRコードを読み取ると、Supabase接続情報がこの端末へ自動登録されます。管理者が手動で変更する場合だけ使用してください。</div>
     <input id="sbUrl" placeholder="https://xxxx.supabase.co" />
     <input id="sbKey" placeholder="anon public key" />
     <button class="btn primary" onclick="saveSetup()">保存</button>
@@ -79,7 +79,16 @@
 let sb=null, employeeSession=null, adminSessionPin=null, monthCache=[];
 const initialParams=new URLSearchParams(location.search);
 let fixedQrToken=initialParams.get('qr')||'';
-if(fixedQrToken){const clean=location.pathname+(location.hash||'');history.replaceState(null,'',clean);}
+const qrSbUrl=initialParams.get('sburl')||'';
+const qrSbKey=initialParams.get('sbkey')||'';
+if(qrSbUrl&&qrSbKey){
+  localStorage.setItem('sb_url',qrSbUrl);
+  localStorage.setItem('sb_key',qrSbKey);
+}
+if(fixedQrToken||qrSbUrl||qrSbKey){
+  const clean=location.pathname+(location.hash||'');
+  history.replaceState(null,'',clean);
+}
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 function setMsg(id,text,ok=true){$(id).innerHTML=text?`<div class="msg ${ok?'ok':'err'}">${esc(text)}</div>`:''}
@@ -115,7 +124,7 @@ async function addEmployee(){const c=$('newCode').value.trim(),n=$('newName').va
 async function setEmployeeActive(code,active){if(!confirm(active?'この従業員を再開しますか？':'この従業員を停止しますか？'))return;const {data,error}=await sb.rpc('qr_attendance_admin_set_employee_active',{p_admin_pin:adminSessionPin,p_employee_code:code,p_active:active});if(error||!data?.ok)return setMsg('adminMsg',data?.message||error?.message,false);setMsg('adminMsg',data.message);showEmployeeManager()}
 async function resetEmployeePin(code){const p=prompt('新しいPIN（4桁以上）');if(!p)return;const {data,error}=await sb.rpc('qr_attendance_admin_reset_employee_pin',{p_admin_pin:adminSessionPin,p_employee_code:code,p_new_pin:p});if(error||!data?.ok)return setMsg('adminMsg',data?.message||error?.message,false);setMsg('adminMsg',data.message)}
 function stopQrTimers(){}
-async function showQr(){if(!adminSessionPin)return;const base=location.href.split('?')[0].split('#')[0];const {data,error}=await sb.rpc('qr_attendance_admin_fixed_qr_token',{p_admin_pin:adminSessionPin});if(error||!data)return setMsg('adminMsg',error?.message||'固定QRを取得できませんでした。',false);const qrUrl=base+'?qr='+encodeURIComponent(data);$('adminContent').innerHTML=`<h3>従業員用 固定QRコード</h3><div class="muted">このQRコードを会社入口などに掲示してください。QRコード自体は固定です。出勤・退勤のたびに必ずこのQRを読み取る必要があります。</div><div id="qr" class="qrbox"></div><div class="notice">QRを読み取らず通常のURLから開いた場合は打刻できません。1回のQR読取につき1回だけ打刻できます。</div>`;if(window.QRCode)new QRCode($('qr'),{text:qrUrl,width:250,height:250})}
+async function showQr(){if(!adminSessionPin)return;const base=location.href.split('?')[0].split('#')[0];const {data,error}=await sb.rpc('qr_attendance_admin_fixed_qr_token',{p_admin_pin:adminSessionPin});if(error||!data)return setMsg('adminMsg',error?.message||'固定QRを取得できませんでした。',false);const u=localStorage.getItem('sb_url')||'';const k=localStorage.getItem('sb_key')||'';if(!u||!k)return setMsg('adminMsg','この管理端末にSupabase接続情報がありません。先に設定画面で保存してください。',false);const params=new URLSearchParams({qr:String(data),sburl:u,sbkey:k,v:'22'});const qrUrl=base+'?'+params.toString();$('adminContent').innerHTML=`<h3>従業員用 固定QRコード</h3><div class="muted">このQRコードを会社入口などに掲示してください。QRコード自体は固定です。従業員は初回からSupabase設定不要で、QRを読み取るだけで打刻画面を利用できます。</div><div id="qr" class="qrbox"></div><div class="notice">QRには打刻用トークンとSupabaseの公開接続情報が含まれます。読み取り後、接続情報は端末へ自動保存され、URL欄からは自動的に消えます。1回のQR読取につき1回だけ打刻できます。</div>`;if(window.QRCode)new QRCode($('qr'),{text:qrUrl,width:300,height:300,correctLevel:QRCode.CorrectLevel.L})}
 async function showEditLog(){stopQrTimers();const {data,error}=await sb.rpc('qr_attendance_admin_edit_log',{p_admin_pin:adminSessionPin,p_limit:100});if(error)return setMsg('adminMsg',error.message,false);let h='<h3>打刻修正履歴</h3>';(data||[]).forEach(r=>h+=`<div class="adminEdit"><b>${esc(r.employee_name)}</b> <span class="small muted">${esc(r.employee_code)} / ${esc(r.work_date)}</span><div class="small mono">変更前: ${fmtTime(r.old_check_in)} → ${fmtTime(r.old_check_out)}<br>変更後: ${fmtTime(r.new_check_in)} → ${fmtTime(r.new_check_out)}</div>${r.reason?`<div class="small">理由: ${esc(r.reason)}</div>`:''}<div class="small muted">${new Date(r.created_at).toLocaleString('ja-JP')}</div></div>`);$('adminContent').innerHTML=h+(data?.length?'':'<div class="muted">履歴はありません。</div>')}
 function showAdminSettings(){stopQrTimers();$('adminContent').innerHTML=`<h3>管理者設定</h3><div class="muted">初期PIN 0000 のままの場合は、実運用前に必ず変更してください。</div><input id="newAdminPin" type="password" inputmode="numeric" placeholder="新しい管理者PIN（4桁以上）"><button class="btn primary" onclick="changeAdminPin()">管理者PINを変更</button>`}
 async function changeAdminPin(){const p=$('newAdminPin').value.trim();if(p.length<4)return setMsg('adminMsg','新しいPINは4桁以上にしてください。',false);const {data,error}=await sb.rpc('qr_attendance_admin_change_pin',{p_admin_pin:adminSessionPin,p_new_pin:p});if(error||!data?.ok)return setMsg('adminMsg',data?.message||error?.message,false);adminSessionPin=p;$('adminPin').value=p;setMsg('adminMsg',data.message);showAdminSettings()}
