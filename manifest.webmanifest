@@ -1,8 +1,11 @@
 {
-  "name":"QR出退勤 v2.2",
-  "short_name":"QR出退勤",
+  "name":"QR出退勤",
+  "short_name":"出退勤",
   "start_url":"./",
+  "scope":"./",
   "display":"standalone",
   "background_color":"#f4f6f8",
-  "theme_color":"#0f2747"
+  "theme_color":"#0f2747",
+  "lang":"ja",
+  "icons":[]
 }
